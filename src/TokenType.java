@@ -2,15 +2,22 @@ package com.compiler;
 
 public enum TokenType {
     // Single-char
-    LPAREN, RPAREN, LBRACE, RBRACE, SEMI,
-    PLUS, MINUS, MUL, DIV, ASSIGN, LT, GT,
-    EQ_EQ,
+    LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
+    COMMA, DOT, MINUS, PLUS, SEMICOLON, SLASH, STAR,
+
+    // One or two char
+    BANG, BANG_EQUAL,
+    EQUAL, EQUAL_EQUAL,
+    GREATER, GREATER_EQUAL,
+    LESS, LESS_EQUAL,
 
     // Literals
-    IDENTIFIER, INT_LITERAL, FLOAT_LITERAL,
+    IDENTIFIER, STRING, NUMBER,
 
-    // Keywords
-    KW_INT, KW_FLOAT, KW_IF, KW_ELSE, KW_WHILE, KW_PRINT,
+    // Keywords - FULL LIST
+    AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
+    PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,
+    INT, FLOAT,
 
     EOF
 }

@@ -1,69 +1,164 @@
 package com.compiler;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Scanner {
     private final String source;
     private final List<Token> tokens = new ArrayList<>();
-    private int start = 0, current = 0, line = 1;
-    private static final Map<String, TokenType> keywords = new HashMap<>();
+    private int start = 0;
+    private int current = 0;
+    private int line = 1;
+
+    private static final Map<String, TokenType> keywords;
     static {
-        keywords.put("int", TokenType.KW_INT);
-        keywords.put("float", TokenType.KW_FLOAT);
-        keywords.put("if", TokenType.KW_IF);
-        keywords.put("else", TokenType.KW_ELSE);
-        keywords.put("while", TokenType.KW_WHILE);
-        keywords.put("print", TokenType.KW_PRINT);
+        keywords = new HashMap<>();
+        keywords.put("and",    TokenType.AND);
+        keywords.put("class",  TokenType.CLASS);
+        keywords.put("else",   TokenType.ELSE);
+        keywords.put("false",  TokenType.FALSE);
+        keywords.put("for",    TokenType.FOR);
+        keywords.put("fun",    TokenType.FUN);
+        keywords.put("if",     TokenType.IF);
+        keywords.put("nil",    TokenType.NIL);
+        keywords.put("or",     TokenType.OR);
+        keywords.put("print",  TokenType.PRINT);
+        keywords.put("return", TokenType.RETURN);
+        keywords.put("super",  TokenType.SUPER);
+        keywords.put("this",   TokenType.THIS);
+        keywords.put("true",   TokenType.TRUE);
+        keywords.put("var",    TokenType.VAR);
+        keywords.put("while",  TokenType.WHILE);
     }
-    public Scanner(String source) { this.source = source; }
+
+    public Scanner(String source) {
+        this.source = source;
+    }
+
     public List<Token> scanTokens() {
-        while (current < source.length()) {
+        while (!isAtEnd()) {
             start = current;
             scanToken();
         }
-        tokens.add(new Token(TokenType.EOF, "", line));
+        tokens.add(new Token(TokenType.EOF, "", null, line));
         return tokens;
     }
+
     private void scanToken() {
-        char c = source.charAt(current++);
+        char c = advance();
         switch (c) {
-            case '(': addToken(TokenType.LPAREN); break;
-            case ')': addToken(TokenType.RPAREN); break;
-            case '{': addToken(TokenType.LBRACE); break;
-            case '}': addToken(TokenType.RBRACE); break;
-            case ';': addToken(TokenType.SEMI); break;
-            case '+': addToken(TokenType.PLUS); break;
+            case '(': addToken(TokenType.LEFT_PAREN); break;
+            case ')': addToken(TokenType.RIGHT_PAREN); break;
+            case '{': addToken(TokenType.LEFT_BRACE); break;
+            case '}': addToken(TokenType.RIGHT_BRACE); break;
+            case ',': addToken(TokenType.COMMA); break;
+            case '.': addToken(TokenType.DOT); break;
             case '-': addToken(TokenType.MINUS); break;
-            case '*': addToken(TokenType.MUL); break;
-            case '/': addToken(TokenType.DIV); break;
-            case '<': addToken(TokenType.LT); break;
-            case '>': addToken(TokenType.GT); break;
-            case '=':
-                boolean isEq = current < source.length() && source.charAt(current) == '=';
-                if(isEq) current++;
-                addToken(isEq ? TokenType.EQ_EQ : TokenType.ASSIGN);
+            case '+': addToken(TokenType.PLUS); break;
+            case ';': addToken(TokenType.SEMICOLON); break;
+            case '*': addToken(TokenType.STAR); break;
+            case '!': addToken(match('=') ? TokenType.BANG_EQUAL : TokenType.BANG); break;
+            case '=': addToken(match('=') ? TokenType.EQUAL_EQUAL : TokenType.EQUAL); break;
+            case '<': addToken(match('=') ? TokenType.LESS_EQUAL : TokenType.LESS); break;
+            case '>': addToken(match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER); break;
+            case '/':
+                if (match('/')) {
+                    while (peek() != '\n' && !isAtEnd()) advance();
+                } else {
+                    addToken(TokenType.SLASH);
+                }
                 break;
             case ' ': case '\r': case '\t': break;
             case '\n': line++; break;
+            case '"': string(); break;
             default:
-                if (Character.isDigit(c)) number();
-                else if (Character.isLetter(c)) identifier();
+                if (isDigit(c)) {
+                    number();
+                } else if (isAlpha(c)) {
+                    identifier();
+                } else {
+                    System.err.println("[line " + line + "] Error: Unexpected character.");
+                }
                 break;
         }
     }
+
     private void identifier() {
-        while (current < source.length() && Character.isLetterOrDigit(source.charAt(current))) current++;
+        while (isAlphaNumeric(peek())) advance();
         String text = source.substring(start, current);
-        TokenType type = keywords.getOrDefault(text, TokenType.IDENTIFIER);
+        TokenType type = keywords.get(text);
+        if (type == null) type = TokenType.IDENTIFIER;
         addToken(type);
     }
+
     private void number() {
-        while (current < source.length() && Character.isDigit(source.charAt(current))) current++;
-        boolean isFloat = false;
-        if (current < source.length() && source.charAt(current) == '.' && current+1 < source.length() && Character.isDigit(source.charAt(current+1))) {
-            isFloat = true; current++;
-            while (current < source.length() && Character.isDigit(source.charAt(current))) current++;
+        while (isDigit(peek())) advance();
+        if (peek() == '.' && isDigit(peekNext())) {
+            advance();
+            while (isDigit(peek())) advance();
         }
-        addToken(isFloat ? TokenType.FLOAT_LITERAL : TokenType.INT_LITERAL);
+        addToken(TokenType.NUMBER, Double.parseDouble(source.substring(start, current)));
     }
-    private void addToken(TokenType type) { tokens.add(new Token(type, source.substring(start, current), line)); }
+
+    private void string() {
+        while (peek() != '"' && !isAtEnd()) {
+            if (peek() == '\n') line++;
+            advance();
+        }
+        if (isAtEnd()) {
+            System.err.println("[line " + line + "] Error: Unterminated string.");
+            return;
+        }
+        advance();
+        String value = source.substring(start + 1, current - 1);
+        addToken(TokenType.STRING, value);
+    }
+
+    private boolean match(char expected) {
+        if (isAtEnd()) return false;
+        if (source.charAt(current) != expected) return false;
+        current++;
+        return true;
+    }
+
+    private char peek() {
+        if (isAtEnd()) return '\0';
+        return source.charAt(current);
+    }
+
+    private char peekNext() {
+        if (current + 1 >= source.length()) return '\0';
+        return source.charAt(current + 1);
+    }
+
+    private boolean isAlpha(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    }
+
+    private boolean isAlphaNumeric(char c) {
+        return isAlpha(c) || isDigit(c);
+    }
+
+    private boolean isDigit(char c) {
+        return c >= '0' && c <= '9';
+    }
+
+    private boolean isAtEnd() {
+        return current >= source.length();
+    }
+
+    private char advance() {
+        return source.charAt(current++);
+    }
+
+    private void addToken(TokenType type) {
+        addToken(type, null);
+    }
+
+    private void addToken(TokenType type, Object literal) {
+        String text = source.substring(start, current);
+        tokens.add(new Token(type, text, literal, line));
+    }
 }
