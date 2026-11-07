@@ -1,0 +1,8 @@
+int x = 5; // this is a comment
+float y = 3.14;
+if (x == 5) {
+  print "hello";
+  print "hello world";
+}
+// this whole line is a comment
+return x;

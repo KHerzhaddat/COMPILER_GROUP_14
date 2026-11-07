@@ -6,7 +6,7 @@ import java.util.List;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        String path = "tests/test1.txt";
+        String path = "tests/test2.txt";
         if (args.length > 0) path = args[0];
 
         String code = Files.readString(Paths.get(path));
