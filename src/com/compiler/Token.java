@@ -1,19 +1,20 @@
 package com.compiler;
 
 public class Token {
-  final TokenType type;
-  final String lexeme;
-  final Object literal;
-  final int line;
+    public final TokenType type;
+    public final String lexeme;
+    public final int line;
+    public final int column;
 
-  Token(TokenType type, String lexeme, Object literal, int line) {
-    this.type = type;
-    this.lexeme = lexeme;
-    this.literal = literal;
-    this.line = line;
-  }
+    public Token(TokenType type, String lexeme, int line, int column) {
+        this.type = type;
+        this.lexeme = lexeme;
+        this.line = line;
+        this.column = column;
+    }
 
-  public String toString() {
-    return type + " " + lexeme + " " + literal;
-  }
+    @Override
+    public String toString() {
+        return String.format("Token[%-12s lexeme='%-10s line=%d col=%d]", type, lexeme, line, column);
+    }
 }
