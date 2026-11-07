@@ -19,5 +19,9 @@ public class Main {
         for (Token token : tokens) {
             System.out.println(token);
         }
+
+        Parser parser = new Parser(tokens);
+        try { parser.parse(); }
+        catch (Exception e) { System.out.println("Parse FAILED: " + e.getMessage()); }
     }
 }
