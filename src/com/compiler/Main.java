@@ -3,11 +3,11 @@ package com.compiler;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
-
+//This is the main class that runs the compiler. It reads the source code from a file, tokenizes it using the Scanner, and then parses the tokens using the Parser.
 public class Main {
     public static void main(String[] args) throws Exception {
         String path = "tests/test2.txt";
-        if (args.length > 0) path = args[0];
+        if  (args.length > 0) path = args[0];
 
         String code = Files.readString(Paths.get(path));
         System.out.println("=== Source Code ===");
