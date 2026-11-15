@@ -20,5 +20,10 @@ public class SymbolTable {
         return symbols.get(name);
     }
 
-
+    public void print() {
+        System.out.println("--- Symbol Table ---");
+        for (Map.Entry<String, String> e : symbols.entrySet()) {
+            System.out.println(e.getKey() + " : " + e.getValue());
+        }
+    }
 }
