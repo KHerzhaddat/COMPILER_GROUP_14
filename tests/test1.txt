@@ -1,0 +1,11 @@
+int x = 5;
+float y = 3.14;
+if (x > 2) {
+  print x;
+} else {
+  print y;
+}
+while (x < 10) {
+  x = x + 1;
+}
+return x;
