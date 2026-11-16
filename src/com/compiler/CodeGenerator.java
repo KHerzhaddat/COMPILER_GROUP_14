@@ -89,9 +89,18 @@ public class CodeGenerator {
                     } else {
                         assembly.add("NOT " + dest + ", " + val);
                     }
-                } else {
-                    // x = 5  or  x = t1  or  x = "hi"
-                    assembly.add("MOV " + dest + ", " + rhs);
+                } } else if (rhs.startsWith("-") && rhs.length() > 1) {
+    // t1 = -x  -> NEG t1, x
+    String val = rhs.substring(1);
+    assembly.add("NEG " + dest + ", " + val);
+} else if (rhs.startsWith("!") && rhs.length() > 1) {
+    // t2 = !x  -> NOT t2, x
+    String val = rhs.substring(1);
+    assembly.add("NOT " + dest + ", " + val);
+} else {
+    // x = 5  or  x = t1
+    assembly.add("MOV " + dest + ", " + rhs);
+}
                 }
                 continue;
             }
