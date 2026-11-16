@@ -1,43 +1,39 @@
 package com.compiler;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
+import java.util.*;
+import java.nio.file.*;
+import java.io.*;
 
 public class Main {
     public static void main(String[] args) {
-        // Test code if no file is given
-        String sourceCode = "int x = 10 + 20; \n print x;";
+        // Try both locations: tests/test1.txt and test1.txt
+        String filename = args.length > 0 ? args[0] : "tests/test1.txt";
+        String source = null;
 
-        // If you pass a file: java Main input.txt
-        if (args.length > 0) {
+        String[] tryFiles = {filename, "test1.txt", "tests/test1.txt"};
+        for (String f : tryFiles) {
             try {
-                sourceCode = new String(Files.readAllBytes(Paths.get(args[0])));
-                System.out.println("Reading file: " + args[0]);
-            } catch (IOException e) {
-                System.err.println("Error reading file: " + e.getMessage());
-                return;
-            }
+                source = Files.readString(Path.of(f));
+                filename = f;
+                break;
+            } catch (IOException ignored) {}
         }
 
-        System.out.println("=== COMPILER_GROUP_14 - Lexical Analysis ===");
-        System.out.println("Source:\n" + sourceCode + "\n");
-
-        try {
-            // Assuming your Lexer class is named Lexer or Scanner
-            Scanner lexer = new Scanner(sourceCode);
-            List<Token> tokens = lexer.scanTokens();
-            System.out.println("--- Tokens ---");
-            for (Token token : tokens) {
-                System.out.println(token);
-            }
-
-            System.out.println("\nTotal tokens: " + tokens.size());
-
-        } catch (Exception e) {
-            System.err.println("Compilation Error: " + e.getMessage());
-            e.printStackTrace();
+        if (source == null) {
+            System.out.println("Could not read file: " + filename);
+            System.out.println("Looked in: tests/test1.txt and test1.txt");
+            System.out.println("Current folder: " + Path.of("").toAbsolutePath());
+            return;
         }
+
+        System.out.println("=== SOURCE (" + filename + ") ===");
+        System.out.println(source);
+
+        Scanner scanner = new Scanner(source);
+        List<Token> tokens = scanner.scanTokens();
+
+        System.out.println("\n=== TOKENS ===");
+        for (Token t : tokens) System.out.println(t);
+        System.out.println("\n=== SCAN OK - " + tokens.size() + " tokens ===");
     }
 }
