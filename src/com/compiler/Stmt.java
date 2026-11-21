@@ -98,5 +98,15 @@ public abstract class Stmt {
         }
     }
 
+    static class Return extends Stmt {
+        final Token keyword;
+        final Expr value;
+
+        Return(Token keyword, Expr value) {
+            this.keyword = keyword;
+            this.value = value;
+        }
+    }
+
     public abstract <R> R accept(Visitor<R> visitor);
 }

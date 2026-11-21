@@ -41,6 +41,14 @@ public class Parser {
 
     private Stmt statement() {
         if (match(PRINT)) return printStatement();
+        Token keyword = previous();
+        Expr value = null;
+        if (!check(SEMICOLON)) {
+            value = expression();
+        }
+        consume(SEMICOLON, "Expect ';' after return value.");
+        return new Stmt.Return(keyword, value);
+
         if (match(LBRACE)) return new Stmt.Block(block());
         if (match(IF)) return ifStatement();
         if (match(WHILE)) return whileStatement();
