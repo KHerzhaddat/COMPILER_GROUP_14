@@ -3,70 +3,79 @@
 
 package com.compiler;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class CodeGenerator {
-    private final List<String> assembly = new ArrayList<>();
 
-    public List<String> generate(List<String> irCode) {
-        for (String line : irCode) {
+    private final StringBuilder out = new StringBuilder();
+
+    public String generate(List<String> ir) {
+        out.setLength(0);
+
+        for (String line : ir) {
             line = line.trim();
             if (line.isEmpty()) continue;
 
             // Label: L1:
             if (line.endsWith(":")) {
-                assembly.add(line);
+                out.append(line).append("\n");
                 continue;
             }
 
             // print x
             if (line.startsWith("print ")) {
                 String val = line.substring(6).trim();
-                assembly.add("PRINT " + val);
+                out.append("PRINT ").append(val).append("\n");
                 continue;
             }
 
-            // return x  /  return
-            if (line.startsWith("return")) {
-                String val = line.substring(6).trim();
-                if (val.isEmpty()) {
-                    assembly.add("RET");
-                } else {
-                    assembly.add("RET " + val);
-                }
+            // return x / return
+            if (line.equals("return") || line.startsWith("return ")) {
+                out.append("RET ").append(line.substring(6).trim()).append("\n");
                 continue;
             }
 
-            // ifFalse t3 goto L1
+            // ifFalse cond goto L1
             if (line.startsWith("ifFalse ")) {
-                // ifFalse t3 goto L1 -> JZ t3, L1
-                String rest = line.substring(8).trim(); // "t3 goto L1"
-                String[] parts = rest.split("goto");
-                String cond = parts[0].trim();
-                String label = parts[1].trim();
-                assembly.add("JZ " + cond + ", " + label);
+                // format: ifFalse cond goto L1
+                String[] parts = line.split("\\s+");
+                // parts[0]=ifFalse, parts[1]=cond, parts[2]=goto, parts[3]=label
+                out.append("JZ ").append(parts[1]).append(", ").append(parts[3]).append("\n");
                 continue;
             }
 
-            // Assignment: x = ...  OR  t1 = a + b
+            // goto L1
+            if (line.startsWith("goto ")) {
+                out.append("JMP ").append(line.substring(5).trim()).append("\n");
+                continue;
+            }
+
+            // Assignment: dest = rhs
             if (line.contains("=")) {
                 String[] parts = line.split("=", 2);
                 String dest = parts[0].trim();
                 String rhs = parts[1].trim();
 
-                // t1 = a + b  (Binary)
-                // t1 = -a    (Unary)
-                // x = t1     (Copy)
-                String[] tokens = rhs.split(" ");
-                if (tokens.length == 3) {
-                    // a + b
-                    String left = tokens[0];
+                String[] tokens = rhs.split("\\s+");
+
+                if (tokens.length == 1) {
+                    // x = 5  or  x = y
+                    out.append("MOV ").append(dest).append(", ").append(tokens[0]).append("\n");
+                } else if (tokens.length == 2) {
+                    // x = - a  or  x = ! a  (IRGenerator now emits a space)
+                    // tokens[0] = -, tokens[1] = a
+                    if (tokens[0].equals("-")) {
+                        out.append("NEG ").append(dest).append(", ").append(tokens[1]).append("\n");
+                    } else if (tokens[0].equals("!")) {
+                        out.append("NOT ").append(dest).append(", ").append(tokens[1]).append("\n");
+                    } else {
+                        out.append("MOV ").append(dest).append(", ").append(rhs).append("\n");
+                    }
+                } else if (tokens.length == 3) {
+                    // x = a + b
+                    // tokens[0]=a, tokens[1]=op, tokens[2]=b
                     String op = tokens[1];
-                    String right = tokens[2];
-                    String asmOp = switch (op) {
+                    String instr = switch (op) {
                         case "+" -> "ADD";
                         case "-" -> "SUB";
                         case "*" -> "MUL";
@@ -77,55 +86,25 @@ public class CodeGenerator {
                         case ">" -> "GT";
                         case "<=" -> "LE";
                         case ">=" -> "GE";
+                        case "and" -> "AND";
+                        case "or" -> "OR";
                         default -> "MOV";
                     };
-                    assembly.add(asmOp + " " + dest + ", " + left + ", " + right);
-                } else if (tokens.length == 2) {
-                    // -a or !a
-                    String op = tokens[0];
-                    String val = tokens[1];
-                    if (op.equals("-")) {
-                        assembly.add("NEG " + dest + ", " + val);
+                    out.append(instr).append(" ").append(dest)
+                            .append(", ").append(tokens[0])
+                            .append(", ").append(tokens[2]).append("\n");
+                } else {
+                    // Fallback for old format: x = -a (no space)
+                    if (rhs.startsWith("-") && rhs.length() > 1) {
+                        out.append("NEG ").append(dest).append(", ").append(rhs.substring(1)).append("\n");
+                    } else if (rhs.startsWith("!") && rhs.length() > 1) {
+                        out.append("NOT ").append(dest).append(", ").append(rhs.substring(1)).append("\n");
                     } else {
-                        assembly.add("NOT " + dest + ", " + val);
+                        out.append("MOV ").append(dest).append(", ").append(rhs).append("\n");
                     }
-                } } else if (rhs.startsWith("-") && rhs.length() > 1) {
-    // t1 = -x  -> NEG t1, x
-    String val = rhs.substring(1);
-    assembly.add("NEG " + dest + ", " + val);
-} else if (rhs.startsWith("!") && rhs.length() > 1) {
-    // t2 = !x  -> NOT t2, x
-    String val = rhs.substring(1);
-    assembly.add("NOT " + dest + ", " + val);
-} else {
-    // x = 5  or  x = t1
-    assembly.add("MOV " + dest + ", " + rhs);
-}
                 }
-                continue;
             }
-
-            // Fallback
-            assembly.add("; " + line);
         }
-        return assembly;
-    }
-
-    public void print() {
-        System.out.println("--- Assembly Code ---");
-        for (String line : assembly) {
-            System.out.println(line);
-        }
-    }
-
-    public void writeToFile(String filename) {
-        try (FileWriter writer = new FileWriter(filename)) {
-            for (String line : assembly) {
-                writer.write(line + "\n");
-            }
-            System.out.println("Output written to " + filename);
-        } catch (IOException e) {
-            System.out.println("Failed to write output: " + e.getMessage());
-        }
+        return out.toString();
     }
 }
