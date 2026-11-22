@@ -4,24 +4,30 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
+//This is the main class that runs the compiler. It reads the source code from a file, tokenizes it using the Scanner, and then parses the tokens using the Parser.
 public class Main {
     public static void main(String[] args) throws Exception {
-        String path = "tests/test2.txt";
-        if (args.length > 0) path = args[0];
+        for (int i = 1; i <= 8; i++) {
+            String filename = "tests/test" + i + ".txt";
+            System.out.println("\n=== Running " + filename + " ===");
 
-        String code = Files.readString(Paths.get(path));
-        System.out.println("=== Source Code ===");
-        System.out.println(code);
-        System.out.println("\n=== Tokens ===");
+            try {
+                String code = Files.readString(Paths.get(filename));
+                System.out.println("=== SOURCE ===");
+                System.out.println(code);
 
-        Scanner scanner = new Scanner(code);
-        List<Token> tokens = scanner.scanTokens();
-        for (Token token : tokens) {
-            System.out.println(token);
+                Scanner scanner = new Scanner(code);
+                List<Token> tokens = scanner.scanTokens();
+                System.out.println("=== TOKENS ===");
+                System.out.println(tokens);
+
+                Parser parser = new Parser(tokens);
+                parser.parse();
+                System.out.println("Parse OK");
+
+            } catch (Exception e) {
+                System.out.println("FAILED " + filename + " : " + e.getMessage());
+            }
         }
-
-        Parser parser = new Parser(tokens);
-        try { parser.parse(); }
-        catch (Exception e) { System.out.println("Parse FAILED: " + e.getMessage()); }
     }
 }
