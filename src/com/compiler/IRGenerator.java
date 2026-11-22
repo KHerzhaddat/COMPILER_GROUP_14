@@ -1,116 +1,153 @@
 package com.compiler;
-
 import java.util.ArrayList;
 import java.util.List;
 
-public class IRGenerator {
+public class IRGenerator implements Stmt.Visitor<Void>, Expr.Visitor<String> {
+
     private final List<String> code = new ArrayList<>();
     private int tempCount = 0;
     private int labelCount = 0;
 
     public List<String> generate(List<Stmt> statements) {
-        for (Stmt s : statements) {
-            if (s != null) genStmt(s);
+        for (Stmt stmt : statements) {
+            stmt.accept(this);
         }
         return code;
     }
 
-    public void print() {
-        System.out.println("--- IR Code ---");
-        for (String line : code) {
-            System.out.println(line);
-        }
-    }
-
     private String newTemp() {
-        tempCount++;
-        return "t" + tempCount;
+        return "t" + (++tempCount);
     }
 
     private String newLabel() {
-        labelCount++;
-        return "L" + labelCount;
+        return "L" + (++labelCount);
     }
 
-    private void genStmt(Stmt stmt) {
-        if (stmt instanceof Stmt.VarDecl) {
-            Stmt.VarDecl v = (Stmt.VarDecl) stmt;
-            if (v.initializer != null) {
-                String result = genExpr(v.initializer);
-                code.add(v.name.lexeme + " = " + result);
-            } else {
-                code.add(v.name.lexeme + " = 0");
-            }
+    // --- Statements ---
 
-        } else if (stmt instanceof Stmt.Print) {
-            String result = genExpr(((Stmt.Print) stmt).expression);
-            code.add("print " + result);
-
-        } else if (stmt instanceof Stmt.ExprStmt) {
-            genExpr(((Stmt.ExprStmt) stmt).expression);
-
-        } else if (stmt instanceof Stmt.If) {
-            Stmt.If i = (Stmt.If) stmt;
-            String cond = genExpr(i.condition);
-            String endLabel = newLabel();
-            code.add("ifFalse " + cond + " goto " + endLabel);
-            genStmt(i.thenBranch);
-            code.add(endLabel + ":");
-
-        } else if (stmt instanceof Stmt.Block) {
-            for (Stmt s : ((Stmt.Block) stmt).statements) {
-                if (s != null) genStmt(s);
-            }
-
-        } else if (stmt instanceof Stmt.Return) {
-            Stmt.Return r = (Stmt.Return) stmt;
-            if (r.value != null) {
-                String result = genExpr(r.value);
-                code.add("return " + result);
-            } else {
-                code.add("return");
-            }
-        }
+    @Override
+    public Void visitExpressionStmt(Stmt.Expression stmt) {
+        expression(stmt.expression);
+        return null;
     }
 
-    // Returns the name of the temp / variable holding the result
-    private String genExpr(Expr expr) {
-        if (expr instanceof Expr.Literal) {
-            Object v = ((Expr.Literal) expr).value;
-            if (v instanceof Double) {
-                double d = (Double) v;
-                // Print 5 not 5.0 if it's a whole number
-                if (d == Math.floor(d)) {
-                    return String.valueOf((int) d);
-                }
-                return String.valueOf(d);
-            }
-            if (v instanceof String) {
-                return "\"" + v + "\"";
-            }
-            return String.valueOf(v);
+    @Override
+    public Void visitPrintStmt(Stmt.Print stmt) {
+        String val = expression(stmt.expression);
+        code.add("print " + val);
+        return null;
+    }
 
-        } else if (expr instanceof Expr.Variable) {
-            return ((Expr.Variable) expr).name.lexeme;
-
-        } else if (expr instanceof Expr.Grouping) {
-            return genExpr(((Expr.Grouping) expr).expression);
-
-        } else if (expr instanceof Expr.Unary) {
-            Expr.Unary u = (Expr.Unary) expr;
-            String right = genExpr(u.right);
-            String temp = newTemp();
-            code.add(temp + " = " + u.operator.lexeme + right);
-            return temp;
-
-        } else if (expr instanceof Expr.Binary) {
-            Expr.Binary b = (Expr.Binary) expr;
-            String left = genExpr(b.left);
-            String right = genExpr(b.right);
-            String temp = newTemp();
-            code.add(temp + " = " + left + " " + b.operator.lexeme + " " + right);
-            return temp;
+    @Override
+    public Void visitVarStmt(Stmt.Var stmt) {
+        if (stmt.initializer != null) {
+            String val = expression(stmt.initializer);
+            code.add(stmt.name.lexeme + " = " + val);
+        } else {
+            code.add(stmt.name.lexeme + " = 0");
         }
-        return "0";
+        return null;
+    }
+
+    @Override
+    public Void visitBlockStmt(Stmt.Block stmt) {
+        for (Stmt s : stmt.statements) s.accept(this);
+        return null;
+    }
+
+    @Override
+    public Void visitIfStmt(Stmt.If stmt) {
+        String cond = expression(stmt.condition);
+        String elseLabel = newLabel();
+        String endLabel = newLabel();
+        code.add("ifFalse " + cond + " goto " + elseLabel);
+        stmt.thenBranch.accept(this);
+        code.add("goto " + endLabel);
+        code.add(elseLabel + ":");
+        if (stmt.elseBranch != null) stmt.elseBranch.accept(this);
+        code.add(endLabel + ":");
+        return null;
+    }
+
+    @Override
+    public Void visitWhileStmt(Stmt.While stmt) {
+        String startLabel = newLabel();
+        String endLabel = newLabel();
+        code.add(startLabel + ":");
+        String cond = expression(stmt.condition);
+        code.add("ifFalse " + cond + " goto " + endLabel);
+        stmt.body.accept(this);
+        code.add("goto " + startLabel);
+        code.add(endLabel + ":");
+        return null;
+    }
+
+    @Override
+    public Void visitReturnStmt(Stmt.Return stmt) {
+        if (stmt.value != null) {
+            String val = expression(stmt.value);
+            code.add("return " + val);
+        } else {
+            code.add("return");
+        }
+        return null;
+    }
+
+    // --- Expressions ---
+
+    private String expression(Expr expr) {
+        return expr.accept(this);
+    }
+
+    @Override
+    public String visitLiteralExpr(Expr.Literal expr) {
+        if (expr.value == null) return "0";
+        return expr.value.toString();
+    }
+
+    @Override
+    public String visitVariableExpr(Expr.Variable expr) {
+        return expr.name.lexeme;
+    }
+
+    @Override
+    public String visitAssignExpr(Expr.Assign expr) {
+        String val = expression(expr.value);
+        code.add(expr.name.lexeme + " = " + val);
+        return expr.name.lexeme;
+    }
+
+    @Override
+    public String visitBinaryExpr(Expr.Binary expr) {
+        String left = expression(expr.left);
+        String right = expression(expr.right);
+        String temp = newTemp();
+        // NOTE: space after unary minus - fixes CodeGenerator bug
+        String op = expr.operator.lexeme;
+        code.add(temp + " = " + left + " " + op + " " + right);
+        return temp;
+    }
+
+    @Override
+    public String visitGroupingExpr(Expr.Grouping expr) {
+        return expression(expr.expression);
+    }
+
+    @Override
+    public String visitUnaryExpr(Expr.Unary expr) {
+        String right = expression(expr.right);
+        String temp = newTemp();
+        // Space is important: "t1 = - a" not "t1 = -a"
+        code.add(temp + " = " + expr.operator.lexeme + " " + right);
+        return temp;
+    }
+
+    @Override
+    public String visitLogicalExpr(Expr.Logical expr) {
+        String left = expression(expr.left);
+        String right = expression(expr.right);
+        String temp = newTemp();
+        code.add(temp + " = " + left + " " + expr.operator.lexeme + " " + right);
+        return temp;
     }
 }
