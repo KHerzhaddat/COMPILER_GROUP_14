@@ -6,6 +6,8 @@ import java.util.List;
 import static com.compiler.TokenType.*;
 
 public class Parser {
+    private static class ParseError extends RuntimeException {}
+
     private final List<Token> tokens;
     private int current = 0;
     private boolean hadError = false;
@@ -25,7 +27,7 @@ public class Parser {
         try {
             if (match(INT, FLOAT)) return varDeclaration();
             return statement();
-        } catch (ParseError e) {
+        } catch (ParseError error) {
             synchronize();
             return null;
         }
@@ -41,6 +43,20 @@ public class Parser {
 
     private Stmt statement() {
         if (match(PRINT)) return printStatement();
+        if (match(RETURN)) return returnStatement();
+        if (match(IF)) return ifStatement();
+        if (match(WHILE)) return whileStatement();
+        if (match(LEFT_BRACE)) return new Stmt.Block(block());
+        return expressionStatement();
+    }
+
+    private Stmt printStatement() {
+        Expr value = expression();
+        consume(SEMICOLON, "Expect ';' after value.");
+        return new Stmt.Print(value);
+    }
+
+    private Stmt returnStatement() {
         Token keyword = previous();
         Expr value = null;
         if (!check(SEMICOLON)) {
@@ -111,6 +127,12 @@ public class Parser {
         return expr;
     }
 
+    private Expr factor() {
+        Expr expr = unary();
+        while (match(SLASH, STAR)) {
+            Token operator = previous();
+            Expr right = unary();
+            expr = new Expr.Binary(expr, operator, right);
     private Expr equality() {
         Expr expr = comparison();
         while (match(NEQ, EQ)) {
@@ -121,6 +143,23 @@ public class Parser {
         return expr;
     }
 
+    private Expr unary() {
+        if (match(BANG, MINUS)) {
+            Token operator = previous();
+            Expr right = unary();
+            return new Expr.Unary(operator, right);
+        }
+        return call();
+    }
+
+    private Expr call() {
+        Expr expr = primary();
+        while (true) {
+            if (match(LEFT_PAREN)) {
+                expr = finishCall(expr);
+            } else {
+                break;
+            }
     private Expr comparison() {
         Expr expr = term();
         while (match(GT, GTE, LT, LTE)) {
@@ -172,8 +211,11 @@ public class Parser {
     }
 
     private boolean match(TokenType... types) {
-        for (TokenType t : types) {
-            if (check(t)) { advance(); return true; }
+        for (TokenType type : types) {
+            if (check(type)) {
+                advance();
+                return true;
+            }
         }
         return false;
     }
@@ -208,14 +250,19 @@ public class Parser {
         while (!isAtEnd()) {
             if (previous().type == SEMICOLON) return;
             switch (peek().type) {
-                case INT: case FLOAT: case FOR:
-                case IF: case WHILE: case PRINT: case RETURN:
+                case CLASS:
+                case FUN:
+                case VAR:
+                case INT:
+                case FLOAT:
+                case FOR:
+                case IF:
+                case WHILE:
+                case PRINT:
+                case RETURN:
                     return;
             }
             advance();
         }
     }
-
-    public boolean hadError() { return hadError; }
-    private static class ParseError extends RuntimeException {}
 }
