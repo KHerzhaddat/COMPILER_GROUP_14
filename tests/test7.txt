@@ -1,14 +1,4 @@
-int x = 5;
-int y = (x + 3) * 2;
-
-print y;
-
-if (y > 10) {
-    print 1;
-}
-
-if (y < 10) {
-    print 0;
-}
-
+if (5 > 1) { print 1; }
+if (5 < 10) { print 0; }
+int x = 10;
 print x;
