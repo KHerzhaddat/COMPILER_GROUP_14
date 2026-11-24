@@ -119,4 +119,14 @@ public class SemanticAnalyzer implements Stmt.Visitor<Void>, Expr.Visitor<Void> 
         expr.right.accept(this);
         return null;
     }
+
+    @Override
+    public Void visitCallExpr(Expr.Call expr) {
+        // Function calls not checked yet - just check the callee and args
+        expr.callee.accept(this);
+        for (Expr arg : expr.arguments) {
+            arg.accept(this);
+        }
+        return null;
+    }
 }

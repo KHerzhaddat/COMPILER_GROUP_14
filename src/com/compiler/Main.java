@@ -1,33 +1,55 @@
 package com.compiler;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
-//This is the main class that runs the compiler. It reads the source code from a file, tokenizes it using the Scanner, and then parses the tokens using the Parser.
 public class Main {
-    public static void main(String[] args) throws Exception {
-        for (int i = 1; i <= 8; i++) {
-            String filename = "tests/test" + i + ".txt";
-            System.out.println("\n=== Running " + filename + " ===");
-
-            try {
-                String code = Files.readString(Paths.get(filename));
-                System.out.println("=== SOURCE ===");
-                System.out.println(code);
-
-                Scanner scanner = new Scanner(code);
-                List<Token> tokens = scanner.scanTokens();
-                System.out.println("=== TOKENS ===");
-                System.out.println(tokens);
-
-                Parser parser = new Parser(tokens);
-                parser.parse();
-                System.out.println("Parse OK");
-
-            } catch (Exception e) {
-                System.out.println("FAILED " + filename + " : " + e.getMessage());
-            }
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.out.println("Usage: java com.compiler.Main <source file>");
+            System.out.println("Example: java com.compiler.Main test.txt");
+            return;
         }
+
+        String path = args[0];
+        String source;
+        try {
+            source = Files.readString(Paths.get(path));
+        } catch (IOException e) {
+            System.err.println("Could not read file: " + path);
+            return;
+        }
+
+        // 1. Scanner - yours is called Scanner, not Lexer
+        Scanner scanner = new Scanner(source);
+        List<Token> tokens = scanner.scanTokens();
+
+        // 2. Parser
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
+
+        // 3. Semantic Analyzer
+        SemanticAnalyzer analyzer = new SemanticAnalyzer();
+        boolean ok = analyzer.analyze(statements);
+        if (!ok) {
+            System.err.println("Semantic check failed. Stopping.");
+            return;
+        }
+
+        // 4. IR Generator
+        IRGenerator irGen = new IRGenerator();
+        List<String> ir = irGen.generate(statements);
+
+        System.out.println("=== IR ===");
+        for (String line : ir) System.out.println(line);
+
+        // 5. Code Generator
+        CodeGenerator codeGen = new CodeGenerator();
+        String asm = codeGen.generate(ir);
+
+        System.out.println("\n=== Assembly ===");
+        System.out.println(asm);
     }
 }

@@ -120,4 +120,5 @@ public class Optimizer {
         for (String line : after) {
             System.out.println(line);
         }
-    }
+    }  // closes print()
+} // closes class Optimizer

@@ -150,4 +150,8 @@ public class IRGenerator implements Stmt.Visitor<Void>, Expr.Visitor<String> {
         code.add(temp + " = " + left + " " + expr.operator.lexeme + " " + right);
         return temp;
     }
+    @Override
+    public String visitCallExpr(Expr.Call expr) {
+        return "";
+    }
 }

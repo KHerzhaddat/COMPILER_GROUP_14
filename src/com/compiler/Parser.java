@@ -50,11 +50,6 @@ public class Parser {
         return expressionStatement();
     }
 
-    private Stmt printStatement() {
-        Expr value = expression();
-        consume(SEMICOLON, "Expect ';' after value.");
-        return new Stmt.Print(value);
-    }
 
     private Stmt returnStatement() {
         Token keyword = previous();
@@ -65,11 +60,7 @@ public class Parser {
         consume(SEMICOLON, "Expect ';' after return value.");
         return new Stmt.Return(keyword, value);
 
-        if (match(LBRACE)) return new Stmt.Block(block());
-        if (match(IF)) return ifStatement();
-        if (match(WHILE)) return whileStatement();
-        return expressionStatement();
-    }
+        }
 
     private Stmt printStatement() {
         Expr value = expression();
@@ -133,7 +124,11 @@ public class Parser {
             Token operator = previous();
             Expr right = unary();
             expr = new Expr.Binary(expr, operator, right);
-    private Expr equality() {
+        }// <- ADD THIS
+        return expr;
+    }
+
+        private Expr equality() {
         Expr expr = comparison();
         while (match(NEQ, EQ)) {
             Token op = previous();
@@ -160,6 +155,24 @@ public class Parser {
             } else {
                 break;
             }
+        }
+        return expr;
+    }
+
+    private Expr finishCall(Expr callee) {
+        java.util.List<Expr> arguments = new java.util.ArrayList<>();
+        if (!check(RIGHT_PAREN)) {
+            do {
+                if (arguments.size() >= 255) {
+                    error(peek(), "Can't have more than 255 arguments.");
+                }
+                arguments.add(expression());
+            } while (match(COMMA));
+        }
+        Token paren = consume(RIGHT_PAREN, "Expect ')' after arguments.");
+        return new Expr.Call(callee, paren, arguments);
+    }
+
     private Expr comparison() {
         Expr expr = term();
         while (match(GT, GTE, LT, LTE)) {
@@ -180,23 +193,6 @@ public class Parser {
         return expr;
     }
 
-    private Expr factor() {
-        Expr expr = unary();
-        while (match(DIVIDE, MULTIPLY)) {
-            Token op = previous();
-            Expr right = unary();
-            expr = new Expr.Binary(expr, op, right);
-        }
-        return expr;
-    }
-
-    private Expr unary() {
-        if (match(MINUS)) {
-            Token op = previous();
-            return new Expr.Unary(op, unary());
-        }
-        return primary();
-    }
 
     private Expr primary() {
         if (match(NUMBER)) return new Expr.Literal(Double.parseDouble(previous().lexeme));
