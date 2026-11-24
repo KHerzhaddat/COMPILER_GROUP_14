@@ -1,4 +1,5 @@
-package com.compiler;
+// AI Disclosure: AI used for code review / debugging suggestions.
+// Core code generation logic designed and implemented by Group 14.package com.compiler;
 
 import java.util.ArrayList;
 import java.util.List;
